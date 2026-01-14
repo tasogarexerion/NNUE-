@@ -1,0 +1,228 @@
+このproxyは各カテゴリーの挙動を好みの動きになるように変数で調整することができます。
+おすすめのセット値は後述しますが、まずは以下に各項目の詳細を記します。
+
+
+・強さ/安定性/ノイズ：体感に効くやつ
+
+TASO_THREADS, TASO_HASH_MB
+	•	エンジンの計算資源。
+	•	THREADS上げる：強く/速くなりがち（上げすぎると逆に詰まることも）
+	•	HASH_MB上げる：探索の再利用が効いて安定しやすいが、メモリ食う。
+
+方向性（Mac）：
+	•	体感遅い→ THREADS↑（ただしCPUコアと相談）
+	•	メモリ余裕→ HASH_MB↑（4096はけっこうデカい）
+
+TASO_GO_HARD_SEC, TASO_GO_STOP_GRACE_SEC
+	•	go が返ってこない時の“強制打ち切り”系。
+	•	既定は 60秒。ここ短くすると「返らない事故」の耐性は上がるが、深く読めないことが増える。
+
+方向性：普段触らない。事故る環境だけ短く。
+
+TASO_READ_TIMEOUT
+	•	エンジン出力待ちのポーリング間隔。既定0.1。
+	•	短く：応答性↑、CPU無駄打ち↑
+	•	長く：CPU↓、反応が鈍る
+
+方向性：普段触らない。
+
+⸻
+
+「表示のCP（△=…）」と“人間向け丸め”のコア
+
+TASO_CP_ALPHA_MIN, TASO_CP_ALPHA_MAX, TASO_CP_SPREAD_REF
+
+ここは「生CP（エンジンcp）」を、そのまま出さずに
+△=で“人間向けに丸めたcp_h”を作る部分のノブ。
+	•	CP_ALPHA_MIN：不確実（候補が割れてる）ときの縮み率（既定0.22）
+	•	上げる→不確実でも△がそれなりに動く（強気表示）
+	•	下げる→不確実は△が渋くなる（慎重表示）
+	•	CP_ALPHA_MAX：確信時の縮み率（既定0.95）
+	•	上げる→確信時ほぼ生cpに近づく
+	•	下げる→常に控えめ表示になる
+	•	CP_SPREAD_REF：上位候補の“差”を確信度に変換する基準（既定300）
+	•	小さく→ちょっと差が出るだけで「確信」扱いになりやすい
+	•	大きく→差が出ても確信しにくい（△が渋い）
+
+方向性：
+	•	△が弱すぎる/いつも小さい→ CP_ALPHA_MIN↑ or CP_SPREAD_REF↓
+	•	△が強気すぎてブレる→ CP_ALPHA_MIN↓ or CP_SPREAD_REF↑
+
+⸻
+
+スタンス（ADV/EVEN/DEFICIT/CRISIS）系
+
+TASO_STANCE_EWMA_ALPHA
+	•	形勢cpの平滑化。既定0.25。
+	•	上げる→反応が速い（ブレやすい）
+	•	下げる→鈍い（安定する）
+
+TASO_STANCE_TREND_ALPHA, TASO_TREND_DEADZONE
+	•	flow=↑↓→の敏感さ。
+	•	TREND_DEADZONE小：すぐ↑↓になる（騒がしい）
+	•	大：なかなか変わらない（落ち着く）
+
+しきい値：TASO_STANCE_*_ENTER/EXIT
+	•	ADV/DEFICIT/CRISIS の境界。
+	•	ENTERを厳しく（絶対値を大きく）→その状態になりにくい
+	•	EXITを緩く（絶対値を小さく）→戻りやすい
+
+方向性：
+	•	すぐCRISISになる→ STANCE_CRI_ENTERをもっと負側へ（例 -1500）
+	•	CRISISから戻らない→ STANCE_CRI_EXITを少し上げる（例 -1000）
+
+⸻
+
+ゲームフェイズ（BUILD→…→FINISH）系
+
+TASO_GP_EWMA_ALPHA, TASO_GP_HYS_GAP
+	•	フェイズがコロコロ変わる問題のノブ。
+	•	GP_EWMA_ALPHA↑：敏感（ブレやすい）
+	•	GP_HYS_GAP↑：戻りにくい（安定）
+
+TASO_GP_*_ENTER（PROBE/TENSION/CLASH）
+	•	engage値の閾値。下げる→早く進む／上げる→遅く進む
+
+TASO_GP_CONVERT_CP_ENTER/EXIT, TASO_GP_FINISH_CP_ENTER/EXIT
+	•	cpでCONVERT/FINISHへ入る境界。
+	•	小さく→早めにCONVERT/FINISHになりやすい
+	•	大きく→なりにくい
+
+TASO_GP_SHOCK_PVCS, TASO_GP_SHOCK_CSC
+	•	“衝突検知でCLASHへ飛ぶ”やつ。
+	•	下げる→すぐCLASH（派手）
+	•	上げる→なかなかCLASHに飛ばない（慎重）
+
+⸻
+
+ATK/DEF候補の性格（選び方のクセ）
+
+PV一致の扱い（安定・慣性）
+	•	TASO_PREFIX_K：PVの一致を見る手数（既定6）
+	•	上げる→「同じ線」判定が厳密になって慣性が効きやすい
+	•	下げる→線の違いに寛容
+	•	TASO_STAB_TAU：一致の重み減衰（既定2.0）
+	•	小：序盤数手の一致を強く評価（ブレやすいが“線”は出る）
+	•	大：広く平均（おだやか）
+
+good-count系（相手の受けの幅＝強制力）
+	•	TASO_GOOD_CP_MARGIN：bestとの差がこの範囲なら「良い手」扱い（既定150）
+	•	上げる→「良い手」増える→ opp_diff（強制力）下がりやすい
+	•	下げる→厳選→ opp_diff 上がりやすい
+	•	TASO_GOOD_COUNT_CAP：何手まで見るか（2〜10、既定5）
+	•	上げる→評価が安定するが鈍る
+	•	下げる→荒れるが反応速い
+	•	TASO_GOOD_TAU：good数→opp_diff変換の曲線（既定3.0）
+	•	大：good数が増えてもopp_diffが落ちにくい（楽観）
+	•	小：すぐ落ちる（厳しい）
+
+候補を落とす基準
+	•	TASO_DROP_SOFT_LIMIT（安定局面の許容cp落ち、既定200）
+	•	TASO_DROP_DISTURB_LIMIT（乱戦局面の許容cp落ち、既定450）
+	•	上げる→“下駄（筋の手）”が残る＝候補が面白くなる
+	•	下げる→堅いが単調
+
+
+  	
+  •	見た目が騒がしい/ブレる：TASO_STANCE_EWMA_ALPHA↓、TASO_TREND_DEADZONE↑、TASO_GP_HYS_GAP↑
+	•	候補が堅すぎてつまらん：TASO_DROP_SOFT_LIMIT↑、TASO_DROP_DISTURB_LIMIT↑、TASO_MULTIPV↑
+	•	事故（頓死）っぽいのが怖い：TASO_SAFETY_MS↑（まずこれ）
+	•	△=の数字が弱すぎる/強すぎる：TASO_CP_ALPHA_MIN と TASO_CP_SPREAD_REF を調整
+
+
+  。おすすめセット値
+
+1) 安定・落ち着き重視（普段使いの鉄板）
+
+ブレを抑えて、stance/flow/phaseが“人格分裂”しにくい。候補は堅め。
+
+export TASO_MODE=WATCH
+export TASO_MULTIPV=5
+export TASO_WATCH_N=5
+
+# stance: 反応を少し鈍くして安定
+export TASO_STANCE_EWMA_ALPHA=0.18
+export TASO_STANCE_TREND_ALPHA=0.18
+export TASO_TREND_DEADZONE=45
+
+# game phase: 変動を抑える
+export TASO_GP_EWMA_ALPHA=0.28
+export TASO_GP_HYS_GAP=0.10
+export TASO_GP_SHOCK_PVCS=0.90
+export TASO_GP_SHOCK_CSC=7
+
+# △= 表示: 不確実時に盛りすぎない
+export TASO_CP_ALPHA_MIN=0.18
+export TASO_CP_ALPHA_MAX=0.92
+export TASO_CP_SPREAD_REF=360
+
+# 候補の暴れを抑える
+export TASO_DROP_SOFT_LIMIT=180
+export TASO_DROP_DISTURB_LIMIT=380
+
+# safety: 事故りにくく
+export TASO_SAFETY_MS=60
+
+2) 攻め筋・展開重視（“派手で気持ちいい”）
+
+ATK候補が出やすく、気持ちよさが増します。候補の幅を広げて「下駄」も残す。
+
+export TASO_MODE=WATCH
+export TASO_MULTIPV=7
+export TASO_WATCH_N=7
+
+# stance/phase: 敏感に
+export TASO_STANCE_EWMA_ALPHA=0.30
+export TASO_STANCE_TREND_ALPHA=0.30
+export TASO_TREND_DEADZONE=25
+
+export TASO_GP_EWMA_ALPHA=0.42
+export TASO_GP_HYS_GAP=0.06
+export TASO_GP_SHOCK_PVCS=0.82
+export TASO_GP_SHOCK_CSC=5
+
+# △= 表示: 動きを出す（ユーザーは気持ちいいがブレやすい）
+export TASO_CP_ALPHA_MIN=0.26
+export TASO_CP_ALPHA_MAX=0.96
+export TASO_CP_SPREAD_REF=260
+
+# 候補の幅（下駄を残す）
+export TASO_DROP_SOFT_LIMIT=260
+export TASO_DROP_DISTURB_LIMIT=520
+
+# safety: 体感軽め（事故リスクは少し上がる）
+export TASO_SAFETY_MS=40
+
+3) 守備・事故回避重視（“怖がりモード”）
+
+手厚く、表示も慎重。石橋を叩いて渡ってで安心したいとき。
+
+export TASO_MODE=WATCH
+export TASO_MULTIPV=5
+export TASO_WATCH_N=5
+
+# stance/phase: さらに安定側へ
+export TASO_STANCE_EWMA_ALPHA=0.16
+export TASO_STANCE_TREND_ALPHA=0.16
+export TASO_TREND_DEADZONE=55
+
+export TASO_GP_EWMA_ALPHA=0.26
+export TASO_GP_HYS_GAP=0.12
+export TASO_GP_SHOCK_PVCS=0.92
+export TASO_GP_SHOCK_CSC=8
+
+# △= 表示: 慎重（不確実は強く出さない）
+export TASO_CP_ALPHA_MIN=0.16
+export TASO_CP_ALPHA_MAX=0.90
+export TASO_CP_SPREAD_REF=420
+
+# 候補は堅く（大外しを混ぜにくい）
+export TASO_DROP_SOFT_LIMIT=160
+export TASO_DROP_DISTURB_LIMIT=340
+
+# safety: ガチ寄り
+export TASO_SAFETY_MS=90
+
+
+上記は一例です。
+お使いの皆さんで気持ちよく使える数値を探してみてください。
