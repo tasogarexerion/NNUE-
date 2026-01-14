@@ -18,7 +18,7 @@ NNUE系エンジン（USI）をラップして、bestmove の強さを歪めず�
 
 ---
 
-##UI表示の見方（TASO表示）
+### UI表示の見方（TASO表示）
 
 1) stance=…
 
