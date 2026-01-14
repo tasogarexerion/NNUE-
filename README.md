@@ -1,6 +1,6 @@
 # TASO NNUE USI Proxy
 
-YaneuraOu系エンジン（USI）をラップして、bestmove の強さを歪めずに、対局・検討で読みやすい「状況表示」と「候補の配膳」を行う Python 製プロキシです。
+NNUE系エンジン（USI）をラップして、bestmove の強さを歪めずに、対局・検討で読みやすい「状況表示」と「候補の配膳」を行う Python 製プロキシです。
 
 - bestmove は原則そのまま（安全フィルタのみ）
 - 表示は少語で、判断の“線”を作る（stance / game phase / intent）
