@@ -40,7 +40,10 @@ from collections import deque
 # =========================
 # PATH / CWD 固定
 # =========================
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, "frozen", False):
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def _abspath_under_script(p: str) -> str:
     if not p:
@@ -189,12 +192,25 @@ INTENT_SWITCH_SHOCK = float(os.environ.get("TASO_INTENT_SWITCH_SHOCK", "0.12"))
 # =========================
 # IO
 # =========================
-def out(s: str) -> None:
+
+# =========================
+# USI stdout encoding (Windows GUI compatibility)
+# =========================
+# Some GUIs (e.g., 将棋所/ShogiGUI) may interpret engine stdout with different encodings.
+# To avoid mojibake, we write USI output as bytes with a configurable encoding.
+# Set env TASO_OUT_ENCODING to "utf-8" or "cp932" as needed.
+TASO_OUT_ENCODING = os.environ.get("TASO_OUT_ENCODING", "utf-8")
+
+def usi_print(line: str) -> None:
+    data = (line + "\n").encode(TASO_OUT_ENCODING, errors="replace")
     try:
-        sys.stdout.write(s + "\n")
-        sys.stdout.flush()
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.flush()
     except BrokenPipeError:
         raise SystemExit(0)
+
+def out(s: str) -> None:
+    usi_print(s)
 
 def info(s: str) -> None:
     if SHOW:
